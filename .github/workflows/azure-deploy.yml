@@ -1,0 +1,44 @@
+name: 🚀 Deploy frontend on push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  web-deploy:
+    name: 🎉 Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🚚 Get latest code
+        uses: actions/checkout@v3
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v2
+        with:
+          node-version: "20"
+
+      - name: 🔨 Install Packages and Build
+        run: |
+          npm install
+          npm run build
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to Azure VM
+        run: |
+          ssh -o StrictHostKeyChecking=no azureuser@20.51.207.28 << 'EOF'
+          cd apache/apache-react/
+          git pull origin main
+          pnpm install
+          pnpm build
+          sudo rm -rf /var/www/apache-react.bimash.com.np/
+          sudo mkdir -p /var/www/apache-react.bimash.com.np/
+          cd
+          sudo mv apache/apache-react/dist/* /var/www/apache-react.bimash.com.np
+          sudo systemctl restart apache2
+          EOF
