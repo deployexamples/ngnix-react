@@ -214,7 +214,7 @@ jobs:
 
       - name: Deploy to Azure VM
         run: |
-          ssh -o StrictHostKeyChecking=no azureuser@20.51.207.28 << 'EOF'
+          ssh -o StrictHostKeyChecking=no azureuser@serverip << 'EOF'
           cd path/for/ngnix-react/
           git pull origin main
           pnpm install
