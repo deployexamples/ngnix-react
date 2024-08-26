@@ -1,159 +1,159 @@
-# apache-wordpress
+# ngnix-react
 
 wordpress with apache server and mysql database at specified domain
 
-## Apache Installation
+## Ngnix Setup
 
-### Step 1: Install Apache
+### Step 1: Install Nginx
+
+#### Update your package index:
 
 ```bash
 sudo apt update
-sudo apt install apache2
 ```
 
-### Step 2: Verify the Installation
-
-After installing Apache, you can verify that the service is running by typing:
+#### Install Nginx:
 
 ```bash
-sudo systemctl status apache2
+sudo apt install nginx
 ```
 
-You should see output similar to the following:
+#### Start Nginx:
 
 ```bash
-● apache2.service - The Apache HTTP Server
-     Loaded: loaded (/lib/systemd/system/apache2.service; enabled; vendor preset: enabled)
-     Active: active (running) since Mon 2021-06-21 15:00:00 UTC; 1min 30s ago
-       Docs: https://httpd.apache.org/docs/2.4/
-   Main PID: 12345 (apache2)
-      Tasks: 55 (limit: 1137)
-     Memory: 6.0M
-     CGroup: /system.slice/apache2.service
-             ├─12345 /usr/sbin/apache2 -k start
-             ├─12346 /usr/sbin/apache2 -k start
-             └─12347 /usr/sbin/apache2 -k start
+sudo systemctl start nginx
 ```
 
-The output shows that Apache is active and running. The "active (running)" part of the output indicates that Apache is running. If Apache is not running, you can start it using:
+#### Enable Nginx to start at boot:
 
 ```bash
-sudo systemctl start apache2
+sudo systemctl enable nginx
 ```
 
-### Step 3: Configure Apache to Start on Boot
-
-To ensure that Apache starts automatically when your server boots, you can enable the service using the following command:
+#### Check Nginx status:
 
 ```bash
-sudo systemctl enable apache2
+sudo systemctl status nginx
 ```
 
-## Configure Apache
+You should see output that indicates Nginx is running.
 
-To configure Apache to serve a website based on a domain name, you'll need to set up a Virtual Host. Here's how you can do it on Ubuntu:
+### Step 2: Adjust the Firewall (Optional)
 
-### Step 1: Enable the rewrite module (optional but recommended)
+If you're using ufw (Uncomplicated Firewall), you need to allow Nginx:
 
-This module allows URL rewriting, which is often needed for domain-based routing.
+#### Allow Nginx HTTP and HTTPS traffic:
 
 ```bash
-sudo a2enmod rewrite
-sudo systemctl restart apache2
+sudo ufw allow 'Nginx Full'
 ```
 
-### Step 2: Create a Virtual Host Configuration File
-
-#### Navigate to the sites-available directory:
+#### Enable the firewall (if not already enabled):
 
 ```bash
-cd /etc/apache2/sites-available/
+sudo ufw enable
 ```
 
-#### Create a new configuration file for your domain:
-
-- #### Replace yourdomain.com with your actual domain name.
+#### Check the firewall status:
 
 ```bash
-sudo nano yourdomain.com.conf
+sudo ufw status
 ```
 
-- #### Add the following content to the file:
+### Step 3: Basic Configuration
 
-```apache
-<VirtualHost \*:80>
-ServerAdmin admin@yourdomain.com
-ServerName yourdomain.com
-ServerAlias www.yourdomain.com
+Default Server Block (Optional) Nginx's default server block is located in `/etc/nginx/sites-available/default.`
 
-    DocumentRoot /var/www/yourdomain.com
-
-    <Directory /var/www/yourdomain.com>
-        Options Indexes FollowSymLinks
-        AllowOverride All
-        Require all granted
-    </Directory>
-
-    ErrorLog ${APACHE_LOG_DIR}/yourdomain.com_error.log
-    CustomLog ${APACHE_LOG_DIR}/yourdomain.com_access.log combined
-
-</VirtualHost>
-```
-
-- ServerAdmin: Your email address for administrative purposes.
-- ServerName: The primary domain name.
-- ServerAlias: Additional domain names (e.g., www.yourdomain.com).
-- DocumentRoot: The directory where your website files are located.
-
-### Step 3: Create the Document Root Directory
-
-#### Create the directory:
+#### You can edit this file to change the server's root directory, server name, and other settings:
 
 ```bash
-sudo mkdir -p /var/www/yourdomain.com
+sudo nano /etc/nginx/sites-available/default
 ```
 
-#### Set the appropriate permissions:
+Here's an example of what it might look like:
+
+```nginx
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    root /var/www/html;
+    index index.html index.htm index.nginx-debian.html;
+
+    server_name your_domain.com www.your_domain.com;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+```
+
+#### Test Nginx Configuration: After making changes, test your configuration to ensure there are no syntax errors:
 
 ```bash
-sudo chown -R $USER:$USER /var/www/yourdomain.com
-sudo chmod -R 755 /var/www/yourdomain.com
+sudo nginx -t
 ```
 
-#### Add an index.html file (for testing):
+#### Reload Nginx: If the test is successful, reload Nginx to apply the changes:
 
 ```bash
-echo "<html><h1>Welcome to yourdomain.com</h1></html>" | sudo tee /var/www/yourdomain.com/index.html
+sudo systemctl reload nginx
 ```
 
-### Step 4: Enable the Virtual Host Configuration
+### Step 4: Setting Up Additional Server Blocks (Optional)
 
-#### Enable the new virtual host:
+To host multiple sites on your server, you can set up additional server blocks.
+
+#### Create a new server block file:
 
 ```bash
-sudo a2ensite yourdomain.com.conf
+sudo nano /etc/nginx/sites-available/your_domain.com
 ```
 
-#### Disable the default virtual host (optional but recommended):
+Add your server block configuration:
+
+```nginx
+server {
+    listen 80;
+    server_name your_domain.com www.your_domain.com;
+
+    root /var/www/your_domain.com/html;
+    index index.html index.htm index.nginx-debian.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+```
+
+#### Enable the new server block: Link it to the sites-enabled directory:
 
 ```bash
-sudo a2dissite 000-default.conf
+sudo ln -s /etc/nginx/sites-available/your_domain.com /etc/nginx/sites-enabled/
 ```
 
-#### Restart Apache to apply the changes:
+#### Test and reload Nginx:
 
 ```bash
-sudo systemctl restart apache2
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
-### Step 5: Update DNS Records
+### Step 5: Monitoring and Maintenance
 
-Make sure your domain's DNS records point to your server's IP address. This is done through your domain registrar's control panel.
+Check Nginx logs:
 
-### Step 6: Test the Configuration
+- Access logs: `/var/log/nginx/access.log`
+- Error logs: `/var/log/nginx/error.log`
 
-Open a web browser and go to http://yourdomain.com. You should see the "Welcome to yourdomain.com" message you added in the index.html file.
-If you need to use SSL (HTTPS), you can obtain and configure an SSL certificate using Let's Encrypt with Certbot. This is often required for modern web standards.
+#### Reload or Restart Nginx after changes:
+
+```bash
+sudo systemctl reload nginx
+sudo systemctl restart nginx
+```
+
+This is a basic setup guide, and Nginx has many advanced features like reverse proxying, load balancing, caching, etc., that you can explore as needed.
 
 ## Manual Deployment
 
@@ -174,31 +174,6 @@ If you need to use SSL (HTTPS), you can obtain and configure an SSL certificate 
 
 ```bash
   npm run build
-```
-
-### Step 4: Deploy the Project
-
-#### Change Directory and Remove Files:
-
-```bash
-  cd /var/www/apache-react.bimash.com.np/
-  rm -rf *
-```
-
-or
-
-#### Remove the existing files and Create a new Directory:
-
-```bash
-  sudo rm -rf /var/www/yourdomain.com/*
-  sudo mkdir -p /var/www/yourdomain.com/
-```
-
-#### Move the Build Files to the Directory:
-
-```bash
-  sudo mv your/path/of/apache-react/dist/* /var/www/yourdomain.com/
-  sudo systemctl restart apache2
 ```
 
 ## CI/CD Pipeline Deployment
@@ -240,14 +215,10 @@ jobs:
       - name: Deploy to Azure VM
         run: |
           ssh -o StrictHostKeyChecking=no azureuser@20.51.207.28 << 'EOF'
-          cd path/for/apache-react/
+          cd path/for/ngnix-react/
           git pull origin main
           pnpm install
           pnpm build
-          sudo rm -rf /var/www/<yourdomain.com>/
-          sudo mkdir -p /var/www/<yourdomain.com>/
-          cd
-          sudo mv path/for/apache-react/dist/* /var/www/<yourdomain.com>/
           sudo systemctl restart apache2
           EOF
 ```
